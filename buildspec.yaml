@@ -1,0 +1,26 @@
+version: 0.2
+env:
+variables:
+ECR_REPOSITORY: "brain-tasks-app"
+IMAGE_TAG: "latest"
+phases:
+pre_build:
+commands:
+- echo Logging in to Amazon ECR...
+- aws --version
+- $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION) || true
+- REPO_URI=$(aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region $AWS_DEFAULT_REGION --query 'repositories[0].repositoryUri' --output text)
+- echo Repository URI: $REPO_URI
+build:
+commands:
+- echo Build started on `date`
+- echo Building the Docker image...
+- docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+- docker tag $ECR_REPOSITORY:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
+post_build:
+commands:
+- echo Pushing the Docker image...
+- docker push $REPO_URI:$IMAGE_TAG
+- printf '[{"name":"brain-tasks","imageUri":"%s"}]' $REPO_URI:$IMAGE_TAG > imagedefinitions.json
+artifacts:
+files: imagedefinitions.json
